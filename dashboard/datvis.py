@@ -33,15 +33,17 @@ mask = (df['timestamp'] >= pd.Timestamp(start_date)) & (df['timestamp'] <= pd.Ti
 filtered_df = df.loc[mask]
 
 # Pilih kolom numerik untuk agregasi
-numeric_cols = filtered_df.select_dtypes(include=['number']).columns
+# Pilih agregasi waktu
+agg_option = st.selectbox("Pilih agregasi waktu:", ['Harian', 'Mingguan'])
+
+# Pilih kolom numerik
+numeric_cols = filtered_df.select_dtypes(include=['number']).columns.tolist()
 
 if agg_option == 'Harian':
     agg_df = filtered_df.groupby(filtered_df['timestamp'].dt.date)[numeric_cols].mean().reset_index()
-    # Setelah reset_index, kolom index akan jadi 'timestamp' tapi tipe data masih datetime.date, ubah ke datetime64
     agg_df['timestamp'] = pd.to_datetime(agg_df['timestamp'])
 else:
     agg_df = filtered_df.groupby(filtered_df['timestamp'].dt.to_period('W'))[numeric_cols].mean().reset_index()
-    # Kolom index sekarang bernama 'timestamp' dan tipe Period, convert ke datetime start of period
     agg_df['timestamp'] = agg_df['timestamp'].dt.start_time
 
 # ----- Visualisasi Tren Sensor Utama -----
