@@ -35,20 +35,8 @@ Visualisasi tren sensor menunjukkan perubahan nilai sensor (seperti suhu, kelemb
 Ini membantu kita memahami pola dan fluktuasi kondisi lingkungan pertanian sepanjang periode pengamatan.
 """)
 
-# Sidebar: Pilih fitur sensor untuk tren
-sensor_options = [
-    "temperature_C",
-    "humidity_%",
-    "soil_moisture_%",
-    "rainfall_mm",
-    "sunlight_hours"
-]
-
-selected_sensors = st.sidebar.multiselect(
-    "Pilih fitur sensor untuk analisis tren:",
-    sensor_options,
-    default=["temperature_C", "humidity_%"]
-)
+# Sensor default untuk tren
+default_sensors = ["temperature_C", "humidity_%", "rainfall_mm"]
 
 # Visualisasi korelasi numerik (heatmap)
 st.subheader("📈 Korelasi Antar Variabel")
@@ -61,18 +49,25 @@ st.plotly_chart(fig_corr)
 
 # Visualisasi tren sensor interaktif dengan Plotly
 st.subheader("🌡️ Tren Sensor Interaktif")
-if selected_sensors:
-    df_plot = df[['timestamp'] + selected_sensors].dropna()
-    fig_trend = px.line(df_plot, x='timestamp', y=selected_sensors,
-                        labels={'timestamp': 'Waktu', 'value': 'Nilai Sensor', 'variable': 'Sensor'},
-                        title="Tren Sensor dari Waktu ke Waktu")
-    st.plotly_chart(fig_trend)
+df_plot = df[['timestamp'] + default_sensors].dropna()
+fig_trend = px.line(df_plot, x='timestamp', y=default_sensors,
+                    labels={'timestamp': 'Waktu', 'value': 'Nilai Sensor', 'variable': 'Sensor'},
+                    title="Tren Sensor dari Waktu ke Waktu")
+st.plotly_chart(fig_trend)
 
 # Hubungan sensor dengan hasil panen dengan scatter + regresi
 target_col = "yield_kg_per_hectare"
 
 if target_col in df.columns:
     st.subheader("📊 Hubungan Sensor dengan Hasil Panen")
+
+    sensor_options = [
+        "temperature_C",
+        "humidity_%",
+        "soil_moisture_%",
+        "rainfall_mm",
+        "sunlight_hours"
+    ]
 
     selected_sensor = st.selectbox("Pilih variabel sensor:", sensor_options)
 
