@@ -13,7 +13,7 @@ uploaded_file = st.file_uploader("Unggah dataset CSV dari Kaggle", type="csv")
 if uploaded_file:
     # Baca data
     df = pd.read_csv(uploaded_file)
-    
+
     # Tampilkan data awal
     st.subheader("🔍 Tinjauan Data")
     st.dataframe(df.head())
@@ -40,7 +40,9 @@ if uploaded_file:
 
     # Visualisasi tren fitur utama
     st.subheader("🌡️ Tren Suhu, Kelembaban, dan Curah Hujan")
-    cols = st.multiselect("Pilih fitur untuk dianalisis:", ["Temperature", "Humidity", "Rainfall", "Soil Moisture", "Light Intensity"], default=["Temperature", "Humidity"])
+    available_columns = df.columns.tolist()
+    default_cols = [col for col in ["Temperature", "Humidity"] if col in available_columns]
+    cols = st.multiselect("Pilih fitur untuk dianalisis:", [col for col in ["Temperature", "Humidity", "Rainfall", "Soil Moisture", "Light Intensity"] if col in available_columns], default=default_cols)
 
     if cols:
         fig2, ax2 = plt.subplots()
@@ -52,24 +54,28 @@ if uploaded_file:
 
     # Analisis prediktif sederhana
     st.subheader("📊 Hubungan Sensor dengan Hasil Panen")
-    selected_x = st.selectbox("Pilih variabel sensor:", ["Temperature", "Humidity", "Soil Moisture", "Rainfall", "Light Intensity", "Pressure", "Soil Temperature"])
+    sensor_options = [col for col in ["Temperature", "Humidity", "Soil Moisture", "Rainfall", "Light Intensity", "Pressure", "Soil Temperature"] if col in df.columns]
+    selected_x = st.selectbox("Pilih variabel sensor:", sensor_options)
 
-    fig3, ax3 = plt.subplots()
-    sns.scatterplot(x=df[selected_x], y=df["CropYield"], ax=ax3)
-    ax3.set_xlabel(selected_x)
-    ax3.set_ylabel("Crop Yield")
-    ax3.set_title(f"Hubungan antara {selected_x} dan Crop Yield")
-    st.pyplot(fig3)
+    if "CropYield" in df.columns:
+        fig3, ax3 = plt.subplots()
+        sns.scatterplot(x=df[selected_x], y=df["CropYield"], ax=ax3)
+        ax3.set_xlabel(selected_x)
+        ax3.set_ylabel("Crop Yield")
+        ax3.set_title(f"Hubungan antara {selected_x} dan Crop Yield")
+        st.pyplot(fig3)
 
-    # Narasi Data Storytelling
-    st.subheader("📝 Narasi Data Storytelling")
-    st.markdown(f"""
-    - Dari visualisasi heatmap, terlihat bahwa fitur **{selected_x}** memiliki hubungan tertentu terhadap hasil panen (**CropYield**).
-    - Berdasarkan grafik scatter, kita bisa mengamati apakah semakin tinggi/lrendah nilai {selected_x}, maka hasil panen ikut berubah atau tidak.
-    - Data sensor yang dikumpulkan melalui perangkat IoT ini bisa menjadi dasar untuk pengambilan keputusan seperti irigasi, pemupukan, atau prediksi hasil panen secara akurat.
+        # Narasi Data Storytelling
+        st.subheader("📝 Narasi Data Storytelling")
+        st.markdown(f"""
+        - Dari visualisasi heatmap, terlihat bahwa fitur **{selected_x}** memiliki hubungan tertentu terhadap hasil panen (**CropYield**).
+        - Berdasarkan grafik scatter, kita bisa mengamati apakah semakin tinggi/lrendah nilai {selected_x}, maka hasil panen ikut berubah atau tidak.
+        - Data sensor yang dikumpulkan melalui perangkat IoT ini bisa menjadi dasar untuk pengambilan keputusan seperti irigasi, pemupukan, atau prediksi hasil panen secara akurat.
 
-    **Kesimpulan:**
-    Dengan menganalisis data sensor secara berkala dan menghubungkannya dengan hasil panen, petani dapat meningkatkan efisiensi pertanian berbasis data.
-    """)
+        **Kesimpulan:**
+        Dengan menganalisis data sensor secara berkala dan menghubungkannya dengan hasil panen, petani dapat meningkatkan efisiensi pertanian berbasis data.
+        """)
+    else:
+        st.warning("Kolom 'CropYield' tidak ditemukan dalam dataset. Pastikan dataset memiliki kolom tersebut untuk analisis lebih lanjut.")
 else:
     st.info("Silakan unggah file CSV dataset sensor pertanian dari Kaggle untuk mulai.")
