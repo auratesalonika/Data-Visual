@@ -37,9 +37,11 @@ numeric_cols = filtered_df.select_dtypes(include=['number']).columns
 
 if agg_option == 'Harian':
     agg_df = filtered_df.groupby(filtered_df['timestamp'].dt.date)[numeric_cols].mean().reset_index()
+    # Setelah reset_index, kolom index akan jadi 'timestamp' tapi tipe data masih datetime.date, ubah ke datetime64
     agg_df['timestamp'] = pd.to_datetime(agg_df['timestamp'])
 else:
     agg_df = filtered_df.groupby(filtered_df['timestamp'].dt.to_period('W'))[numeric_cols].mean().reset_index()
+    # Kolom index sekarang bernama 'timestamp' dan tipe Period, convert ke datetime start of period
     agg_df['timestamp'] = agg_df['timestamp'].dt.start_time
 
 # ----- Visualisasi Tren Sensor Utama -----
