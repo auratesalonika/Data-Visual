@@ -1,15 +1,19 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.express as px
+from sklearn.linear_model import LinearRegression
+import numpy as np
 
 # Konfigurasi halaman
 st.set_page_config(page_title="Dashboard Smart Farming", layout="wide")
 st.title("📊 Dashboard Data Sensor Pertanian - Smart Farming")
 
-# Baca dataset langsung dari file lokal yang sudah diupload
+# Baca dataset dan parsing kolom tanggal
 DATA_PATH = "data/Smart_Farming_Crop_Yield_2024.csv"
-df = pd.read_csv(DATA_PATH)
+df = pd.read_csv(DATA_PATH, parse_dates=['timestamp', 'sowing_date'])
+
+# Tampilkan daftar kolom
+st.write("Daftar kolom dataset:", df.columns.tolist())
 
 # Tampilkan data awal
 st.subheader("🔍 Tinjauan Data")
@@ -18,59 +22,96 @@ st.dataframe(df.head())
 # Info dataset
 st.markdown("""
 **Fitur Penting:**
-- Temperature
-- Humidity
-- Soil Moisture
-- Light Intensity
-- Rainfall
-- Pressure
-- Soil Temperature
-- Target: Crop Yield
+- temperature_C (Suhu dalam derajat Celcius)
+- humidity_% (Kelembaban dalam persen)
+- soil_moisture_% (Kelembaban tanah dalam persen)
+- rainfall_mm (Curah hujan dalam mm)
+- sunlight_hours (Jam penyinaran matahari)
+- yield_kg_per_hectare (Hasil panen dalam kg per hektar)
 """)
 
-# Visualisasi hubungan antar fitur
+# Sidebar: Filter berdasarkan tanggal (timestamp)
+st.sidebar.subheader("Filter Data Berdasarkan Tanggal")
+min_date = df['timestamp'].min()
+max_date = df['timestamp'].max()
+
+start_date, end_date = st.sidebar.date_input(
+    "Pilih rentang tanggal (timestamp):",
+    [min_date, max_date],
+    min_value=min_date,
+    max_value=max_date
+)
+
+if start_date > end_date:
+    st.sidebar.error("Tanggal mulai harus sebelum tanggal akhir.")
+else:
+    df = df[(df['timestamp'] >= pd.to_datetime(start_date)) & (df['timestamp'] <= pd.to_datetime(end_date))]
+
+# Sidebar: Pilih fitur sensor untuk tren
+sensor_options = [
+    "temperature_C",
+    "humidity_%",
+    "soil_moisture_%",
+    "rainfall_mm",
+    "sunlight_hours"
+]
+
+selected_sensors = st.sidebar.multiselect(
+    "Pilih fitur sensor untuk analisis tren:",
+    sensor_options,
+    default=["temperature_C", "humidity_%"]
+)
+
+# Visualisasi korelasi numerik (heatmap)
 st.subheader("📈 Korelasi Antar Variabel")
 numerical_df = df.select_dtypes(include='number')
-fig, ax = plt.subplots(figsize=(10, 6))
-sns.heatmap(numerical_df.corr(), annot=True, cmap="YlGnBu", ax=ax)
-st.pyplot(fig)
+fig_corr = px.imshow(numerical_df.corr(), 
+                     text_auto=True, 
+                     color_continuous_scale="YlGnBu", 
+                     title="Matriks Korelasi Antar Fitur Numerik")
+st.plotly_chart(fig_corr)
 
-# Visualisasi tren fitur utama
-st.subheader("🌡️ Tren Suhu, Kelembaban, dan Curah Hujan")
-available_columns = df.columns.tolist()
-default_cols = [col for col in ["Temperature", "Humidity"] if col in available_columns]
-cols = st.multiselect("Pilih fitur untuk dianalisis:", [col for col in ["Temperature", "Humidity", "Rainfall", "Soil Moisture", "Light Intensity"] if col in available_columns], default=default_cols)
+# Visualisasi tren sensor interaktif dengan Plotly
+st.subheader("🌡️ Tren Sensor Interaktif")
+if selected_sensors:
+    df_plot = df[['timestamp'] + selected_sensors].dropna()
+    fig_trend = px.line(df_plot, x='timestamp', y=selected_sensors,
+                        labels={'timestamp': 'Waktu', 'value': 'Nilai Sensor', 'variable': 'Sensor'},
+                        title="Tren Sensor dari Waktu ke Waktu")
+    st.plotly_chart(fig_trend)
 
-if cols:
-    fig2, ax2 = plt.subplots()
-    df[cols].plot(ax=ax2)
-    plt.xlabel("Index Waktu")
-    plt.ylabel("Nilai Sensor")
-    plt.title("Tren Sensor")
-    st.pyplot(fig2)
+# Analisis hubungan sensor dengan hasil panen
+target_col = "yield_kg_per_hectare"
 
-# Analisis prediktif sederhana
-st.subheader("📊 Hubungan Sensor dengan Hasil Panen")
-sensor_options = [col for col in ["Temperature", "Humidity", "Soil Moisture", "Rainfall", "Light Intensity", "Pressure", "Soil Temperature"] if col in df.columns]
-selected_x = st.selectbox("Pilih variabel sensor:", sensor_options)
+if target_col in df.columns:
+    st.subheader("📊 Hubungan Sensor dengan Hasil Panen (Interaktif)")
 
-if "CropYield" in df.columns:
-    fig3, ax3 = plt.subplots()
-    sns.scatterplot(x=df[selected_x], y=df["CropYield"], ax=ax3)
-    ax3.set_xlabel(selected_x)
-    ax3.set_ylabel("Crop Yield")
-    ax3.set_title(f"Hubungan antara {selected_x} dan Crop Yield")
-    st.pyplot(fig3)
+    selected_sensor = st.selectbox("Pilih variabel sensor:", sensor_options)
 
-    # Narasi Data Storytelling
-    st.subheader("📝 Narasi Data Storytelling")
-    st.markdown(f"""
-    - Dari visualisasi heatmap, terlihat bahwa fitur **{selected_x}** memiliki hubungan tertentu terhadap hasil panen (**CropYield**).
-    - Berdasarkan grafik scatter, kita bisa mengamati apakah semakin tinggi/lrendah nilai {selected_x}, maka hasil panen ikut berubah atau tidak.
-    - Data sensor yang dikumpulkan melalui perangkat IoT ini bisa menjadi dasar untuk pengambilan keputusan seperti irigasi, pemupukan, atau prediksi hasil panen secara akurat.
+    df_scatter = df[[selected_sensor, target_col]].dropna()
 
-    **Kesimpulan:**
-    Dengan menganalisis data sensor secara berkala dan menghubungkannya dengan hasil panen, petani dapat meningkatkan efisiensi pertanian berbasis data.
-    """)
+    fig_scatter = px.scatter(df_scatter, x=selected_sensor, y=target_col,
+                             labels={selected_sensor: selected_sensor, target_col: "Hasil Panen (kg/ha)"},
+                             title=f"Hubungan antara {selected_sensor} dan Hasil Panen")
+    st.plotly_chart(fig_scatter)
+
+    # Prediksi hasil panen dengan regresi linier sederhana
+    st.subheader("🤖 Prediksi Hasil Panen Sederhana dengan Regresi Linier")
+
+    data_reg = df[[selected_sensor, target_col]].dropna()
+
+    X = data_reg[[selected_sensor]].values.reshape(-1, 1)
+    y = data_reg[target_col].values
+
+    model = LinearRegression()
+    model.fit(X, y)
+
+    input_val = st.number_input(f"Masukkan nilai {selected_sensor} untuk prediksi hasil panen:", 
+                                min_value=float(np.min(X)), max_value=float(np.max(X)), value=float(np.median(X)))
+
+    pred_yield = model.predict(np.array([[input_val]]))[0]
+
+    st.markdown(f"Prediksi hasil panen untuk nilai **{selected_sensor} = {input_val:.2f}** adalah: **{pred_yield:.2f} kg/ha**")
+
 else:
-    st.warning("Kolom 'CropYield' tidak ditemukan dalam dataset. Pastikan dataset memiliki kolom tersebut untuk analisis lebih lanjut.")
+    st.warning(f"Kolom '{target_col}' tidak ditemukan dalam dataset.")
