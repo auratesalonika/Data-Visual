@@ -1,58 +1,82 @@
 import streamlit as st
 import pandas as pd
-import seaborn as sns
 import matplotlib.pyplot as plt
-import plotly.express as px
+import seaborn as sns
+from sklearn.linear_model import LinearRegression
+import numpy as np
 
-# Load data
+# Konfigurasi halaman
+st.set_page_config(page_title="Dashboard Smart Farming", layout="wide")
+st.title("📊 Dashboard Data Sensor Pertanian - Smart Farming")
+
+# Baca dataset
 DATA_PATH = "data/Smart_Farming_Crop_Yield_2024.csv"
 df = pd.read_csv(DATA_PATH)
 
-st.title("📊 Dashboard Data Sensor Pertanian - Tanpa Filter Waktu")
-
-# Data preview
-st.subheader("Data Preview")
+# Tampilkan data awal
+st.subheader("🔍 Tinjauan Data")
 st.dataframe(df.head())
 
-# Pilih fitur numerik sensor yang relevan untuk analisis
-sensor_features = ['soil_moisture_%', 'soil_pH', 'temperature_C', 'rainfall_mm', 'humidity_%', 'sunlight_hours', 'pesticide_usage_ml', 'NDVI_index']
-target = 'yield_kg_per_hectare'
+# Info dataset
+st.markdown("""
+**Fitur Penting:**
+- temperature_C
+- humidity_%
+- soil_moisture_%
+- rainfall_mm
+- yield_kg_per_hectare
+""")
 
-# Pastikan kolom target ada
-if target not in df.columns:
-    st.error(f"Kolom '{target}' tidak ditemukan di dataset.")
-else:
-    st.subheader("1. Heatmap Korelasi Fitur Sensor dengan Hasil Panen")
-    corr = df[sensor_features + [target]].corr()
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.heatmap(corr, annot=True, cmap="YlGnBu", ax=ax)
-    st.pyplot(fig)
+# Visualisasi korelasi antar fitur numerik
+st.subheader("📈 Korelasi Antar Variabel")
+numerical_cols = ["temperature_C", "humidity_%", "soil_moisture_%", "rainfall_mm", "yield_kg_per_hectare"]
+corr_df = df[numerical_cols].corr()
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.heatmap(corr_df, annot=True, cmap="YlGnBu", ax=ax)
+st.pyplot(fig)
 
-    st.subheader("2. Scatterplot Interaktif Fitur Sensor vs Hasil Panen")
-    # Scatter plot interaktif pakai Plotly
-    fig2 = px.scatter(df, x='rainfall_mm', y='humidity_%', color=target,
-                      labels={'rainfall_mm':'Rainfall (mm)', 'humidity_%':'Humidity (%)', target:'Yield (kg/ha)'},
-                      title='Hubungan Rainfall dan Humidity dengan Yield')
-    st.plotly_chart(fig2)
+# Eksplorasi hubungan fitur utama dengan hasil panen
+st.subheader("🔄 Eksplorasi Hubungan Fitur Utama dengan Hasil Panen")
+pairplot_fig = sns.pairplot(df, vars=numerical_cols, kind="scatter")
+pairplot_fig.fig.suptitle("Eksplorasi Hubungan Fitur Utama dengan Hasil Panen", y=1.02)
+st.pyplot(pairplot_fig.fig)
 
-    st.subheader("3. Boxplot Status Penyakit Tanaman vs Hasil Panen")
-    fig3, ax3 = plt.subplots()
-    sns.boxplot(x='crop_disease_status', y=target, data=df, ax=ax3)
-    ax3.set_title("Pengaruh Status Penyakit Terhadap Hasil Panen")
-    st.pyplot(fig3)
+# Visualisasi hubungan Rainfall dan Humidity terhadap hasil panen
+st.subheader("🌦️ Hubungan Rainfall dan Humidity dengan Hasil Panen")
+fig2, ax2 = plt.subplots(figsize=(8,6))
+scatter = ax2.scatter(df["rainfall_mm"], df["humidity_%"], c=df["yield_kg_per_hectare"], cmap="viridis", alpha=0.7)
+ax2.set_xlabel("Rainfall (mm)")
+ax2.set_ylabel("Humidity (%)")
+cbar = plt.colorbar(scatter, ax=ax2)
+cbar.set_label("Yield (kg/ha)")
+st.pyplot(fig2)
 
-    st.subheader("4. Histogram Distribusi Hasil Panen")
-    fig4 = px.histogram(df, x=target, nbins=30, title='Distribusi Yield (kg/ha)')
-    st.plotly_chart(fig4)
+# Prediksi hasil panen sederhana dengan regresi linear menggunakan fitur Rainfall dan Humidity
+st.subheader("📊 Prediksi Hasil Panen Sederhana dengan Regresi Linear")
 
-    # Narasi storytelling sederhana
-    st.subheader("📝 Narasi Data Storytelling")
-    st.markdown("""
-    - Korelasi menunjukkan bahwa fitur seperti `rainfall_mm` dan `humidity_%` memiliki hubungan positif dengan hasil panen.
-    - Scatterplot interaktif menampilkan pola bagaimana kombinasi curah hujan dan kelembaban memengaruhi hasil panen.
-    - Boxplot memperlihatkan dampak status penyakit tanaman terhadap penurunan hasil panen.
-    - Histogram distribusi yield membantu kita memahami sebaran hasil panen pada dataset ini.
-    
-    Dengan visualisasi ini, para petani dan pengambil kebijakan dapat lebih memahami faktor utama yang memengaruhi produktivitas pertanian dan mengambil keputusan berbasis data.
-    """)
+X = df[["rainfall_mm", "humidity_%"]].values
+y = df["yield_kg_per_hectare"].values
 
+model = LinearRegression()
+model.fit(X, y)
+
+# Prediksi hasil panen berdasarkan data aktual
+y_pred = model.predict(X)
+
+fig3, ax3 = plt.subplots(figsize=(8,6))
+ax3.scatter(y, y_pred, alpha=0.7)
+ax3.plot([y.min(), y.max()], [y.min(), y.max()], 'r--')
+ax3.set_xlabel("Yield Aktual (kg/ha)")
+ax3.set_ylabel("Yield Prediksi (kg/ha)")
+ax3.set_title("Prediksi Hasil Panen dengan Regresi Linear")
+st.pyplot(fig3)
+
+# Narasi storytelling
+st.subheader("📝 Narasi Data Storytelling")
+st.markdown("""
+- Visualisasi korelasi menunjukkan bagaimana fitur sensor utama berkaitan dengan hasil panen.
+- Pairplot memberikan gambaran detail hubungan antar fitur, termasuk hubungan non-linear dan pola sebaran data.
+- Plot scatter Rainfall dan Humidity yang diberi warna menurut Yield memperlihatkan pola kombinasi kedua sensor tersebut terhadap hasil panen.
+- Model regresi linear sederhana dengan Rainfall dan Humidity sebagai fitur dapat memprediksi hasil panen dengan akurasi yang cukup baik, meski masih bisa ditingkatkan.
+- Data ini bisa digunakan petani untuk pengambilan keputusan seperti optimasi irigasi dan pengelolaan kelembaban lahan guna meningkatkan hasil panen.
+""")
