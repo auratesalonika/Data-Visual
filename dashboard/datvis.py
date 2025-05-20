@@ -32,15 +32,14 @@ if start_date > end_date:
 mask = (df['timestamp'] >= pd.Timestamp(start_date)) & (df['timestamp'] <= pd.Timestamp(end_date))
 filtered_df = df.loc[mask]
 
-# Pilih agregasi
-st.sidebar.header("Agregasi Data")
-agg_option = st.sidebar.radio("Pilih agregasi waktu:", ('Harian', 'Mingguan'))
+# Pilih kolom numerik untuk agregasi
+numeric_cols = filtered_df.select_dtypes(include=['number']).columns
 
 if agg_option == 'Harian':
-    agg_df = filtered_df.groupby(filtered_df['timestamp'].dt.date).mean().reset_index()
+    agg_df = filtered_df.groupby(filtered_df['timestamp'].dt.date)[numeric_cols].mean().reset_index()
     agg_df['timestamp'] = pd.to_datetime(agg_df['timestamp'])
 else:
-    agg_df = filtered_df.groupby(filtered_df['timestamp'].dt.to_period('W')).mean().reset_index()
+    agg_df = filtered_df.groupby(filtered_df['timestamp'].dt.to_period('W'))[numeric_cols].mean().reset_index()
     agg_df['timestamp'] = agg_df['timestamp'].dt.start_time
 
 # ----- Visualisasi Tren Sensor Utama -----
