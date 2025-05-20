@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import plotly.express as px
 
 # Load data
-DATA_PATH = "/mnt/data/Smart_Farming_Crop_Yield_2024.csv"
+DATA_PATH = "data/Smart_Farming_Crop_Yield_2024.csv"
 df = pd.read_csv(DATA_PATH)
 
 st.title("📊 Dashboard Data Sensor Pertanian - Tanpa Filter Waktu")
