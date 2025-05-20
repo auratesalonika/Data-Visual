@@ -33,8 +33,9 @@ if uploaded_file:
 
     # Visualisasi hubungan antar fitur
     st.subheader("📈 Korelasi Antar Variabel")
+    numerical_df = df.select_dtypes(include='number')
     fig, ax = plt.subplots(figsize=(10, 6))
-    sns.heatmap(df.corr(), annot=True, cmap="YlGnBu", ax=ax)
+    sns.heatmap(numerical_df.corr(), annot=True, cmap="YlGnBu", ax=ax)
     st.pyplot(fig)
 
     # Visualisasi tren fitur utama
