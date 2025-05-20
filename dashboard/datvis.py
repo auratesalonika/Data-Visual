@@ -8,7 +8,7 @@ import numpy as np
 st.set_page_config(page_title="Dashboard Smart Farming", layout="wide")
 st.title("📊 Dashboard Data Sensor Pertanian - Smart Farming")
 
-DATA_PATH = "/mnt/data/Smart_Farming_Crop_Yield_2024.csv"
+DATA_PATH = "data/Smart_Farming_Crop_Yield_2024.csv"
 df = pd.read_csv(DATA_PATH, parse_dates=['timestamp', 'sowing_date'])
 
 st.subheader("🔍 Tinjauan Data")
