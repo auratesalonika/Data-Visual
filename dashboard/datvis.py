@@ -52,12 +52,13 @@ Warna yang lebih terang menunjukkan hasil panen yang lebih tinggi.
 
 # --- Pairplot hubungan fitur utama ---
 st.subheader("🔄 Eksplorasi Hubungan Fitur Utama dengan Hasil Panen")
-fig3, ax3 = plt.subplots(figsize=(12, 8))
-sns.pairplot(df, vars=["temperature_C", "soil_moisture_%", "rainfall_mm", "yield_kg_per_hectare"], kind="scatter")
-st.pyplot(fig3)
-st.markdown("""
-> Pairplot membantu melihat pola dan hubungan antara variabel utama sensor dengan hasil panen secara visual.
-""")
+pairplot_fig = sns.pairplot(
+    df,
+    vars=["temperature_C", "soil_moisture_%", "rainfall_mm", "yield_kg_per_hectare"],
+    kind="scatter"
+)
+pairplot_fig.fig.suptitle("Eksplorasi Hubungan Fitur Utama dengan Hasil Panen", y=1.02)
+st.pyplot(pairplot_fig.fig)
 
 # --- 3D Scatter interaktif ---
 st.subheader("📊 Visualisasi 3D Interaktif: Rainfall, Humidity, dan Hasil Panen")
