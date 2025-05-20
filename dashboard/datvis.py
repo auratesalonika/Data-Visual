@@ -8,7 +8,7 @@ st.set_page_config(page_title="Dashboard Smart Farming", layout="wide")
 st.title("📊 Dashboard Data Sensor Pertanian - Smart Farming")
 
 # Baca dataset langsung dari file lokal yang sudah diupload
-DATA_PATH = "/mnt/data/Smart_Farming_Crop_Yield_2024.csv"
+DATA_PATH = "data/Smart_Farming_Crop_Yield_2024.csv"
 df = pd.read_csv(DATA_PATH)
 
 # Tampilkan data awal
