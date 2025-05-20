@@ -1,83 +1,109 @@
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
 import plotly.express as px
-import plotly.graph_objects as go
 from sklearn.linear_model import LinearRegression
 import numpy as np
 
 st.set_page_config(page_title="Dashboard Smart Farming", layout="wide")
+
 st.title("📊 Dashboard Data Sensor Pertanian - Smart Farming")
 
+# Load dataset
 DATA_PATH = "data/Smart_Farming_Crop_Yield_2024.csv"
-df = pd.read_csv(DATA_PATH, parse_dates=['timestamp', 'sowing_date'])
+df = pd.read_csv(DATA_PATH)
 
-st.subheader("🔍 Tinjauan Data")
-st.dataframe(df.head())
+# Pilih kolom yang relevan
+df = df[[
+    "soil_moisture_%", "soil_pH", "temperature_C", "rainfall_mm", "humidity_%",
+    "sunlight_hours", "NDVI_index", "pesticide_usage_ml", "yield_kg_per_hectare"
+]].dropna()
 
+# --- Narasi pembuka ---
 st.markdown("""
-**Fitur Penting:**
-- temperature_C (Suhu dalam derajat Celcius)
-- humidity_% (Kelembaban dalam persen)
-- soil_moisture_% (Kelembaban tanah dalam persen)
-- rainfall_mm (Curah hujan dalam mm)
-- sunlight_hours (Jam penyinaran matahari)
-- yield_kg_per_hectare (Hasil panen dalam kg per hektar)
+### Selamat datang di Dashboard Data Sensor Pertanian  
+Dashboard ini menampilkan analisis hubungan data sensor IoT dengan hasil panen untuk membantu pengambilan keputusan pertanian berbasis data.
+
+Data meliputi sensor suhu, kelembaban, curah hujan, kelembaban tanah, sinar matahari, dan indeks vegetasi (NDVI).
 """)
 
-# Tren sensor default
-default_sensors = ["temperature_C", "humidity_%", "rainfall_mm"]
+# --- Heatmap korelasi ---
+st.subheader("📈 Korelasi Antar Variabel Sensor dan Hasil Panen")
+fig, ax = plt.subplots(figsize=(10, 6))
+sns.heatmap(df.corr(), annot=True, cmap="YlGnBu", ax=ax)
+st.pyplot(fig)
+st.markdown("""
+> Dari heatmap terlihat beberapa fitur sensor yang memiliki korelasi signifikan dengan hasil panen,  
+seperti suhu, kelembaban tanah, dan indeks NDVI yang berkaitan erat dengan hasil panen.
+""")
 
-st.subheader("🌡️ Tren Sensor")
-df_plot = df[['timestamp'] + default_sensors].dropna()
-fig_trend = px.line(df_plot, x='timestamp', y=default_sensors,
-                    labels={'timestamp': 'Waktu', 'value': 'Nilai Sensor', 'variable': 'Sensor'},
-                    title="Tren Sensor dari Waktu ke Waktu")
-st.plotly_chart(fig_trend)
+# --- Scatter interaktif 2D ---
+st.subheader("🌧️ Visualisasi Interaktif: Rainfall dan Humidity terhadap Yield")
+fig2 = px.scatter(df, x="rainfall_mm", y="humidity_%", color="yield_kg_per_hectare",
+                  color_continuous_scale='Viridis',
+                  labels={"rainfall_mm": "Curah Hujan (mm)", "humidity_%": "Kelembaban (%)", "yield_kg_per_hectare": "Hasil Panen (kg/ha)"},
+                  title="Hubungan Curah Hujan & Kelembaban dengan Hasil Panen")
+st.plotly_chart(fig2, use_container_width=True)
+st.markdown("""
+> Grafik ini menunjukkan bagaimana kombinasi curah hujan dan kelembaban berpengaruh pada hasil panen.  
+Warna yang lebih terang menunjukkan hasil panen yang lebih tinggi.
+""")
 
-target_col = "yield_kg_per_hectare"
+# --- Pairplot hubungan fitur utama ---
+st.subheader("🔄 Eksplorasi Hubungan Fitur Utama dengan Hasil Panen")
+fig3, ax3 = plt.subplots(figsize=(12, 8))
+sns.pairplot(df, vars=["temperature_C", "soil_moisture_%", "rainfall_mm", "yield_kg_per_hectare"], kind="scatter")
+st.pyplot(fig3)
+st.markdown("""
+> Pairplot membantu melihat pola dan hubungan antara variabel utama sensor dengan hasil panen secara visual.
+""")
 
-if target_col in df.columns:
-    st.subheader("📊 Hubungan Dua Sensor dengan Hasil Panen")
+# --- 3D Scatter interaktif ---
+st.subheader("📊 Visualisasi 3D Interaktif: Rainfall, Humidity, dan Hasil Panen")
+fig4 = px.scatter_3d(df, x="rainfall_mm", y="humidity_%", z="yield_kg_per_hectare",
+                     color="yield_kg_per_hectare", color_continuous_scale="Viridis",
+                     labels={"rainfall_mm": "Curah Hujan (mm)", "humidity_%": "Kelembaban (%)", "yield_kg_per_hectare": "Hasil Panen (kg/ha)"},
+                     title="3D Scatter Plot: Rainfall & Humidity vs Yield")
+st.plotly_chart(fig4, use_container_width=True)
+st.markdown("""
+> Visualisasi 3D ini memudahkan pemahaman hubungan kompleks antara curah hujan, kelembaban, dan hasil panen secara interaktif.
+""")
 
-    # Pilih dua sensor
-    sensor_options = [
-        "temperature_C",
-        "humidity_%",
-        "soil_moisture_%",
-        "rainfall_mm",
-        "sunlight_hours"
-    ]
-    sensor1 = st.selectbox("Pilih sensor 1:", sensor_options, index=sensor_options.index("rainfall_mm"))
-    sensor2 = st.selectbox("Pilih sensor 2:", sensor_options, index=sensor_options.index("humidity_%"))
+# --- Prediksi hasil panen sederhana ---
+st.subheader("🤖 Prediksi Hasil Panen Sederhana dengan Regresi Linear")
 
-    data = df[[sensor1, sensor2, target_col]].dropna()
+# Fitur input X: rainfall dan humidity sebagai contoh
+X = df[["rainfall_mm", "humidity_%"]]
+y = df["yield_kg_per_hectare"]
 
-    X = data[[sensor1, sensor2]].values
-    y = data[target_col].values
+model = LinearRegression()
+model.fit(X, y)
 
-    # Fit multiple linear regression
-    model = LinearRegression()
-    model.fit(X, y)
-    y_pred = model.predict(X)
+# Prediksi hasil panen dari data aktual
+df["predicted_yield"] = model.predict(X)
 
-    # Tampilkan koefisien regresi
-    st.markdown(f"**Model Regresi:**  \n`Hasil Panen = {model.intercept_:.2f} + {model.coef_[0]:.2f} * {sensor1} + {model.coef_[1]:.2f} * {sensor2}`")
+# Tampilkan scatter plot hasil aktual vs prediksi
+fig5 = px.scatter(df, x="yield_kg_per_hectare", y="predicted_yield",
+                  labels={"yield_kg_per_hectare": "Hasil Panen Aktual", "predicted_yield": "Prediksi Hasil Panen"},
+                  title="Perbandingan Hasil Panen Aktual dan Prediksi")
+fig5.add_shape(
+    dict(type="line", x0=df["yield_kg_per_hectare"].min(), y0=df["yield_kg_per_hectare"].min(),
+         x1=df["yield_kg_per_hectare"].max(), y1=df["yield_kg_per_hectare"].max(),
+         line=dict(color="red", dash="dash"))
+)
+st.plotly_chart(fig5, use_container_width=True)
+st.markdown("""
+> Model regresi linear sederhana menggunakan curah hujan dan kelembaban untuk memprediksi hasil panen.  
+> Garis merah putus-putus menunjukkan garis ideal jika prediksi sama dengan hasil aktual.
+""")
 
-    # Scatter 3D plot hasil panen vs dua sensor
-    fig_3d = px.scatter_3d(data, x=sensor1, y=sensor2, z=target_col, color=target_col,
-                           title=f"3D Scatter: {sensor1} & {sensor2} terhadap Hasil Panen",
-                           labels={sensor1: sensor1, sensor2: sensor2, target_col: "Hasil Panen (kg/ha)"})
-    st.plotly_chart(fig_3d)
+# --- Penutup ---
+st.markdown("""
+---  
+### Kesimpulan  
+Analisis data sensor IoT ini membuka wawasan baru bagi pengelolaan pertanian berbasis data.  
+Dengan memantau variabel lingkungan secara real-time dan menganalisis hubungannya dengan hasil panen, petani dapat membuat keputusan yang lebih tepat dan efisien.
 
-    # Prediksi hasil panen dari input user (readonly output)
-    st.subheader("🤖 Prediksi Hasil Panen dengan Dua Sensor")
-
-    val1 = st.slider(f"Masukkan nilai {sensor1}:", float(data[sensor1].min()), float(data[sensor1].max()), float(data[sensor1].median()))
-    val2 = st.slider(f"Masukkan nilai {sensor2}:", float(data[sensor2].min()), float(data[sensor2].max()), float(data[sensor2].median()))
-
-    pred_yield = model.predict(np.array([[val1, val2]]))[0]
-    st.markdown(f"**Prediksi hasil panen untuk {sensor1} = {val1:.2f} dan {sensor2} = {val2:.2f} adalah:**  \n**{pred_yield:.2f} kg/ha**")
-
-else:
-    st.warning(f"Kolom '{target_col}' tidak ditemukan dalam dataset.")
-
+Dashboard ini siap dikembangkan lebih lanjut untuk fitur prediksi yang lebih kompleks dan integrasi data waktu nyata.
+""")
