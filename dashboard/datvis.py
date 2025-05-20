@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from sklearn.linear_model import LinearRegression
 import numpy as np
 
@@ -11,9 +12,6 @@ st.title("📊 Dashboard Data Sensor Pertanian - Smart Farming")
 # Baca dataset dan parsing kolom tanggal
 DATA_PATH = "data/Smart_Farming_Crop_Yield_2024.csv"
 df = pd.read_csv(DATA_PATH, parse_dates=['timestamp', 'sowing_date'])
-
-# Tampilkan daftar kolom
-st.write("Daftar kolom dataset:", df.columns.tolist())
 
 # Tampilkan data awal
 st.subheader("🔍 Tinjauan Data")
@@ -28,6 +26,13 @@ st.markdown("""
 - rainfall_mm (Curah hujan dalam mm)
 - sunlight_hours (Jam penyinaran matahari)
 - yield_kg_per_hectare (Hasil panen dalam kg per hektar)
+""")
+
+# Jelaskan maksud tren sensor
+st.markdown("""
+### 🌡️ Tren Sensor
+Visualisasi tren sensor menunjukkan perubahan nilai sensor (seperti suhu, kelembaban, curah hujan) dari waktu ke waktu.  
+Ini membantu kita memahami pola dan fluktuasi kondisi lingkungan pertanian sepanjang periode pengamatan.
 """)
 
 # Sidebar: Pilih fitur sensor untuk tren
@@ -63,38 +68,43 @@ if selected_sensors:
                         title="Tren Sensor dari Waktu ke Waktu")
     st.plotly_chart(fig_trend)
 
-# Analisis hubungan sensor dengan hasil panen
+# Hubungan sensor dengan hasil panen dengan scatter + regresi
 target_col = "yield_kg_per_hectare"
 
 if target_col in df.columns:
-    st.subheader("📊 Hubungan Sensor dengan Hasil Panen (Interaktif)")
+    st.subheader("📊 Hubungan Sensor dengan Hasil Panen")
 
     selected_sensor = st.selectbox("Pilih variabel sensor:", sensor_options)
 
-    df_scatter = df[[selected_sensor, target_col]].dropna()
+    data = df[[selected_sensor, target_col]].dropna()
 
-    fig_scatter = px.scatter(df_scatter, x=selected_sensor, y=target_col,
-                             labels={selected_sensor: selected_sensor, target_col: "Hasil Panen (kg/ha)"},
-                             title=f"Hubungan antara {selected_sensor} dan Hasil Panen")
-    st.plotly_chart(fig_scatter)
-
-    # Prediksi hasil panen dengan regresi linier sederhana
-    st.subheader("🤖 Prediksi Hasil Panen Sederhana dengan Regresi Linier")
-
-    data_reg = df[[selected_sensor, target_col]].dropna()
-
-    X = data_reg[[selected_sensor]].values.reshape(-1, 1)
-    y = data_reg[target_col].values
-
+    # Fit regresi linier
+    X = data[[selected_sensor]].values.reshape(-1, 1)
+    y = data[target_col].values
     model = LinearRegression()
     model.fit(X, y)
+    y_pred = model.predict(X)
 
-    input_val = st.number_input(f"Masukkan nilai {selected_sensor} untuk prediksi hasil panen:", 
-                                min_value=float(np.min(X)), max_value=float(np.max(X)), value=float(np.median(X)))
+    # Buat scatter plot + garis regresi
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=data[selected_sensor], y=data[target_col], mode='markers', name='Data'))
+    fig.add_trace(go.Scatter(x=data[selected_sensor], y=y_pred, mode='lines', name='Regresi Linier'))
+    fig.update_layout(
+        title=f"Hubungan {selected_sensor} dengan Hasil Panen",
+        xaxis_title=selected_sensor,
+        yaxis_title="Hasil Panen (kg/ha)"
+    )
+    st.plotly_chart(fig)
+
+    # Prediksi hasil panen (readonly)
+    st.subheader("🤖 Prediksi Hasil Panen Sederhana dengan Regresi Linier")
+    input_val = st.slider(f"Masukkan nilai {selected_sensor} untuk prediksi hasil panen:",
+                          float(np.min(X)), float(np.max(X)), float(np.median(X)))
 
     pred_yield = model.predict(np.array([[input_val]]))[0]
 
-    st.markdown(f"Prediksi hasil panen untuk nilai **{selected_sensor} = {input_val:.2f}** adalah: **{pred_yield:.2f} kg/ha**")
+    # Tampilkan hasil prediksi sebagai teks saja, tidak bisa diubah
+    st.markdown(f"**Prediksi hasil panen untuk nilai {selected_sensor} = {input_val:.2f} adalah:**  \n**{pred_yield:.2f} kg/ha**")
 
 else:
     st.warning(f"Kolom '{target_col}' tidak ditemukan dalam dataset.")
