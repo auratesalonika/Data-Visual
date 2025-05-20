@@ -9,7 +9,7 @@ st.set_page_config(page_title="Dashboard Smart Farming", layout="wide")
 st.title("📊 Dashboard Data Sensor Pertanian - Smart Farming")
 
 # Baca dataset dan parsing kolom tanggal
-DATA_PATH = "data/Smart_Farming_Crop_Yield_2024.csv"
+DATA_PATH = "/mnt/data/Smart_Farming_Crop_Yield_2024.csv"
 df = pd.read_csv(DATA_PATH, parse_dates=['timestamp', 'sowing_date'])
 
 # Tampilkan daftar kolom
@@ -29,23 +29,6 @@ st.markdown("""
 - sunlight_hours (Jam penyinaran matahari)
 - yield_kg_per_hectare (Hasil panen dalam kg per hektar)
 """)
-
-# Sidebar: Filter berdasarkan tanggal (timestamp)
-st.sidebar.subheader("Filter Data Berdasarkan Tanggal")
-min_date = df['timestamp'].min()
-max_date = df['timestamp'].max()
-
-start_date, end_date = st.sidebar.date_input(
-    "Pilih rentang tanggal (timestamp):",
-    [min_date, max_date],
-    min_value=min_date,
-    max_value=max_date
-)
-
-if start_date > end_date:
-    st.sidebar.error("Tanggal mulai harus sebelum tanggal akhir.")
-else:
-    df = df[(df['timestamp'] >= pd.to_datetime(start_date)) & (df['timestamp'] <= pd.to_datetime(end_date))]
 
 # Sidebar: Pilih fitur sensor untuk tren
 sensor_options = [
